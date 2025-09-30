@@ -1,0 +1,24 @@
+[project]
+name = "bazel-mcp"
+version = "0.1.0"
+description = "MCP server exposing Bazel build/run/test/query as tools"
+requires-python = ">=3.10"
+authors = [{ name = "Bazel MCP Contributors" }]
+readme = "README.md"
+license = { text = "MIT" }
+dependencies = [
+  "mcp>=1.2.0",
+]
+
+[project.scripts]
+bazel-mcp = "bazel_mcp.server:main"
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
