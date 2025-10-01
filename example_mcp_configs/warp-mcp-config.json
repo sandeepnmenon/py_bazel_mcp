@@ -1,0 +1,7 @@
+{
+  "bazel-mcp": {
+    "command": "/home/s.menon/github/py_bazel_mcp/.venv/bin/bazel-mcp",
+    "args": ["--repo", "/home/s.menon/github/vehicle"],
+    "env": {}
+  }
+}
