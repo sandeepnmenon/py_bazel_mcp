@@ -309,6 +309,17 @@ def build_server(repo_root: str) -> Server:
     return srv
 
 
+async def run_server(repo_root: str):
+    """Run the MCP server with stdio transport."""
+    srv = build_server(repo_root)
+    async with stdio_server() as (read_stream, write_stream):
+        await srv.run(
+            read_stream,
+            write_stream,
+            srv.create_initialization_options()
+        )
+
+
 def main():
     """Main entry point for the Bazel MCP server."""
     parser = argparse.ArgumentParser(
@@ -340,8 +351,7 @@ def main():
     
     print(f"Starting Bazel MCP server for: {repo_root}", flush=True)
     
-    srv = build_server(repo_root)
-    asyncio.run(stdio_server(srv))
+    asyncio.run(run_server(repo_root))
 
 
 if __name__ == "__main__":
