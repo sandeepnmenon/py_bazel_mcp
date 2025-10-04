@@ -49,6 +49,7 @@ py_bazel_mcp/
 
 ### 4. `util.py` - Configuration
 - `which_bazel()` - Detects Bazel/Bazelisk executable
+- `validate_bazel_workspace()` - Validates Bazel workspace presence
 - `DEFAULT_KINDS` - Configurable target kinds to discover
 
 ## MCP Tools Exposed
@@ -98,7 +99,7 @@ Use Settings → MCP Servers → Add Custom Server with generated config.
 
 ## How It Works
 
-1. **Startup**: Server validates Bazel workspace (WORKSPACE or MODULE.bazel)
+1. **Startup**: Server validates Bazel workspace (requires WORKSPACE, WORKSPACE.bazel, or MODULE.bazel). Exits with error if not found.
 2. **Discovery**: On first `bazel_list_targets` call, queries all target kinds
 3. **Caching**: Results cached in memory; refresh with `refresh: true`
 4. **Execution**: Bazel commands run via `asyncio.create_subprocess_exec`
@@ -177,6 +178,11 @@ print(asyncio.run(discover_targets('/path/to/repo')))
 
 ### "No module named 'mcp'"
 - Solution: `source .venv/bin/activate && pip install -e .`
+
+### "Not a valid Bazel repository"
+- Server requires WORKSPACE, WORKSPACE.bazel, or MODULE.bazel in the `--repo` directory
+- Check the path provided to `--repo` argument
+- Server will exit with error code 1 if workspace files are not found
 
 ### "bazel query failed"
 - Ensure WORKSPACE/MODULE.bazel exists

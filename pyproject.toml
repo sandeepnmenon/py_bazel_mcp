@@ -1,6 +1,6 @@
 [project]
 name = "bazel-mcp"
-version = "1.0.2"
+version = "1.0.3"
 description = "MCP server exposing Bazel build/run/test/query as tools"
 requires-python = ">=3.10"
 authors = [{ name = "Sandeep Menon" }]
@@ -8,6 +8,11 @@ readme = "README.md"
 license = { text = "MIT" }
 dependencies = [
   "mcp>=1.2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7.0.0",
 ]
 
 [project.scripts]

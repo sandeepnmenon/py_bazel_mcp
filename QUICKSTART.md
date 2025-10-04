@@ -133,6 +133,12 @@ source .venv/bin/activate
 pip install -e .
 ```
 
+### "Not a valid Bazel repository"
+The server requires a valid Bazel workspace. Ensure your `--repo` path contains one of:
+- `WORKSPACE`
+- `WORKSPACE.bazel`
+- `MODULE.bazel`
+
 ### "Bazel not found"
 Install Bazelisk:
 ```bash
@@ -144,7 +150,7 @@ sudo mv bazel /usr/local/bin/bazel
 ### Server not responding in Warp/VS Code/Cursor
 1. Check the MCP server logs in your editor
 2. Verify `working_directory` and `PYTHONPATH` are set correctly
-3. Ensure the `--repo` path points to a valid Bazel workspace
+3. Ensure the `--repo` path points to a valid Bazel workspace (contains WORKSPACE or MODULE.bazel)
 4. Restart your editor
 
 ---

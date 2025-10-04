@@ -16,6 +16,7 @@ from mcp.types import (
 
 from .bazel import run_query, run_build, run_binary, run_test
 from .targets import discover_targets, TargetList
+from .util import validate_bazel_workspace
 
 
 def tool(name: str, description: str, schema: Dict[str, Any]) -> Tool:
@@ -335,19 +336,16 @@ def main():
     # Validate repo path
     repo_root = os.path.abspath(args.repo)
     if not os.path.isdir(repo_root):
-        print(f"Error: {repo_root} is not a valid directory")
+        print(f"Error: {repo_root} is not a valid directory", flush=True)
         return 1
     
     # Check for WORKSPACE or MODULE.bazel file
-    workspace_file = os.path.join(repo_root, "WORKSPACE")
-    workspace_bazel = os.path.join(repo_root, "WORKSPACE.bazel")
-    module_bazel = os.path.join(repo_root, "MODULE.bazel")
-    
-    if not (os.path.exists(workspace_file) or 
-            os.path.exists(workspace_bazel) or 
-            os.path.exists(module_bazel)):
-        print(f"Warning: No WORKSPACE or MODULE.bazel file found in {repo_root}")
-        print("This may not be a valid Bazel repository.")
+    if not validate_bazel_workspace(repo_root):
+        print(f"Error: Not a valid Bazel repository.", flush=True)
+        print(f"No WORKSPACE or MODULE.bazel file found in {repo_root}", flush=True)
+        print("\nPlease run this server from a Bazel workspace root directory.", flush=True)
+        print("Expected files: WORKSPACE, WORKSPACE.bazel, or MODULE.bazel", flush=True)
+        return 1
     
     print(f"Starting Bazel MCP server for: {repo_root}", flush=True)
     
