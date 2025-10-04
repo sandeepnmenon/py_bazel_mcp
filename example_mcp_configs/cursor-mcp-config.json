@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "bazel-mcp": {
+      "command": "python3",
+      "args": ["-m", "bazel_mcp.server", "--repo", "${workspaceFolder}"],
+      "working_directory": "/home/s.menon/github/py_bazel_mcp",
+      "env": {
+        "PYTHONPATH": "/home/s.menon/github/py_bazel_mcp/src"
+      }
+    }
+  }
+}
