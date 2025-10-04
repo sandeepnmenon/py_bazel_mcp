@@ -240,6 +240,7 @@ sudo mv bazelisk /usr/local/bin/bazel
 | Issue | Solution |
 |-------|----------|
 | "No module named 'mcp'" | Install with `pip install bazel-mcp` |
+| "Not a valid Bazel repository" | The server must be run from a directory containing `WORKSPACE`, `WORKSPACE.bazel`, or `MODULE.bazel`. Check your `--repo` path. |
 | "bazel query failed" | Ensure you're in a Bazel workspace (has `WORKSPACE` or `MODULE.bazel`) |
 | Editor not detecting server | Restart editor after configuration |
 | Logs not streaming | Add `--verbose_failures` flag to see detailed output |
