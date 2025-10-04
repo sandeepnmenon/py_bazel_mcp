@@ -1,7 +1,7 @@
 [project]
 name = "bazel-mcp"
-version = "1.0.3"
-description = "MCP server exposing Bazel build/run/test/query as tools"
+version = "1.1.0"
+description = "MCP server exposing Bazel build/run/test/query as tools with input validation and structured output"
 requires-python = ">=3.10"
 authors = [{ name = "Sandeep Menon" }]
 readme = "README.md"

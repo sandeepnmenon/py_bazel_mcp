@@ -83,6 +83,15 @@ The assistant should use the `bazel_list_targets` tool and show your project's t
 
 - **`bazel://targets`**: Returns a JSON snapshot of all discovered targets in your workspace
 
+### 🔒 Security Features
+
+- **Input Validation**: All inputs are validated to prevent command injection attacks
+- **Structured Output**: Consistent JSON responses with timing and metrics
+- **Resource Limits**: Protects against DoS with reasonable limits on input sizes
+- **Workspace Validation**: Only runs in legitimate Bazel workspaces
+
+See [SECURITY.md](SECURITY.md) for comprehensive security documentation.
+
 ## Usage Examples
 
 ### Building and Testing
@@ -142,7 +151,19 @@ bazel_run(
 **Parameters:**
 - `refresh` (bool, optional): Force re-discovery of targets
 
-**Returns:** JSON with targets grouped by kind (`cc_library`, `cc_binary`, `py_library`, `py_binary`, `cc_test`, `py_test`)
+**Returns:** Structured JSON response:
+```json
+{
+  "success": true,
+  "timestamp": "2025-10-04T12:00:00",
+  "repoRoot": "/path/to/workspace",
+  "kinds": {
+    "cc_library": ["//lib:common", "//lib:utils"],
+    "cc_binary": ["//src:app"]
+  },
+  "elapsed_seconds": 0.523
+}
+```
 </details>
 
 <details>

@@ -4,6 +4,7 @@ import argparse
 import asyncio
 import json
 import os
+import time
 from typing import Any, Dict, List
 
 from mcp.server import Server
@@ -17,6 +18,7 @@ from mcp.types import (
 from .bazel import run_query, run_build, run_binary, run_test
 from .targets import discover_targets, TargetList
 from .util import validate_bazel_workspace
+from .validation import ValidationError
 
 
 def tool(name: str, description: str, schema: Dict[str, Any]) -> Tool:
@@ -188,93 +190,175 @@ def build_server(repo_root: str) -> Server:
 
     # ========== TOOL HANDLERS ==========
     
-    async def stream_process(proc, tool_name: str) -> int:
+    async def stream_process(proc, tool_name: str) -> tuple[int, list[str], list[str]]:
         """
-        Stream stdout/stderr from a process.
+        Stream stdout/stderr from a process and capture output.
         
         Args:
             proc: Process handle
             tool_name: Name of the tool (for logging)
             
         Returns:
-            Process exit code
+            Tuple of (exit_code, stdout_lines, stderr_lines)
         """
-        async def forward_stream(stream, prefix: str):
-            """Forward stream lines with prefix."""
+        stdout_lines = []
+        stderr_lines = []
+        
+        async def forward_stream(stream, prefix: str, collector: list):
+            """Forward stream lines with prefix and collect them."""
             while True:
                 line = await stream.readline()
                 if not line:
                     break
                 # Decode bytes to string
                 line_str = line.decode('utf-8') if isinstance(line, bytes) else line
-                print(f"{prefix}: {line_str.rstrip()}", flush=True)
+                line_str = line_str.rstrip()
+                print(f"{prefix}: {line_str}", flush=True)
+                collector.append(line_str)
         
         await asyncio.gather(
-            forward_stream(proc.stdout, "OUT"),
-            forward_stream(proc.stderr, "ERR"),
+            forward_stream(proc.stdout, "OUT", stdout_lines),
+            forward_stream(proc.stderr, "ERR", stderr_lines),
         )
         await proc.wait()
-        return proc.returncode
+        return proc.returncode, stdout_lines, stderr_lines
 
     @srv.call_tool()
     async def call_tool(name: str, arguments: dict) -> list[TextContent]:
-        """Handle tool invocations."""
+        """Handle tool invocations with validation and structured output."""
         nonlocal cached
+        start_time = time.time()
+        
+        try:
+            result, cached = await _handle_tool_call(name, arguments, cached, start_time)
+            return result
+        except ValidationError as e:
+            # Return structured error response for validation failures
+            elapsed = time.time() - start_time
+            error_response = {
+                "success": False,
+                "error": "Validation error",
+                "message": str(e),
+                "elapsed_seconds": round(elapsed, 3)
+            }
+            return [TextContent(
+                type="text",
+                text=json.dumps(error_response, indent=2)
+            )]
+        except Exception as e:
+            # Return structured error response for other failures
+            elapsed = time.time() - start_time
+            error_response = {
+                "success": False,
+                "error": type(e).__name__,
+                "message": str(e),
+                "elapsed_seconds": round(elapsed, 3)
+            }
+            return [TextContent(
+                type="text",
+                text=json.dumps(error_response, indent=2)
+            )]
+    
+    async def _handle_tool_call(name: str, arguments: dict, cached_param, start_time: float) -> tuple[list[TextContent], any]:
+        """Internal tool call handler."""
+        cached = cached_param
         
         if name == "bazel_list_targets":
             refresh = arguments.get("refresh", False)
             if refresh:
                 cached = None
             data = await ensure_targets()
+            elapsed = time.time() - start_time
+            response = {
+                "success": True,
+                "timestamp": data.timestamp,
+                "repoRoot": data.repoRoot,
+                "kinds": data.kinds,
+                "all": data.all,
+                "elapsed_seconds": round(elapsed, 3)
+            }
             return [TextContent(
                 type="text",
-                text=json.dumps({
-                    "timestamp": data.timestamp,
-                    "repoRoot": data.repoRoot,
-                    "kinds": data.kinds,
-                    "all": data.all,
-                }, indent=2)
-            )]
+                text=json.dumps(response, indent=2)
+            )], cached
         
         elif name == "bazel_query":
             expr = arguments["expr"]
             flags = arguments.get("flags", [])
             results = await run_query(expr, cwd=repo_root, flags=flags)
+            elapsed = time.time() - start_time
+            response = {
+                "success": True,
+                "query": expr,
+                "results": results,
+                "result_count": len(results),
+                "elapsed_seconds": round(elapsed, 3)
+            }
             return [TextContent(
                 type="text",
-                text="\n".join(results) if results else "(no matches)"
-            )]
+                text=json.dumps(response, indent=2)
+            )], cached
         
         elif name == "bazel_build":
             targets = arguments["targets"]
             flags = arguments.get("flags", ["--color=no", "--curses=no"])
             proc = await run_build(targets, cwd=repo_root, flags=flags)
-            code = await stream_process(proc, "bazel_build")
+            exit_code, stdout, stderr = await stream_process(proc, "bazel_build")
+            elapsed = time.time() - start_time
+            response = {
+                "success": exit_code == 0,
+                "command": "bazel build",
+                "targets": targets,
+                "exit_code": exit_code,
+                "stdout_lines": len(stdout),
+                "stderr_lines": len(stderr),
+                "elapsed_seconds": round(elapsed, 3)
+            }
             return [TextContent(
                 type="text",
-                text=f"Build completed with exit code: {code}"
-            )]
+                text=json.dumps(response, indent=2)
+            )], cached
         
         elif name == "bazel_run":
             target = arguments["target"]
             run_args = arguments.get("args", [])
             flags = arguments.get("flags", ["--color=no", "--curses=no"])
             proc = await run_binary(target, runtime_args=run_args, cwd=repo_root, flags=flags)
-            code = await stream_process(proc, "bazel_run")
+            exit_code, stdout, stderr = await stream_process(proc, "bazel_run")
+            elapsed = time.time() - start_time
+            response = {
+                "success": exit_code == 0,
+                "command": "bazel run",
+                "target": target,
+                "exit_code": exit_code,
+                "stdout_lines": len(stdout),
+                "stderr_lines": len(stderr),
+                "elapsed_seconds": round(elapsed, 3)
+            }
             return [TextContent(
                 type="text",
-                text=f"Run completed with exit code: {code}"
-            )]
+                text=json.dumps(response, indent=2)
+            )], cached
         
         elif name == "bazel_test":
             targets = arguments.get("targets", ["//..."])
             flags = arguments.get("flags", ["--color=no", "--curses=no"])
             proc = await run_test(targets, cwd=repo_root, flags=flags)
-            code = await stream_process(proc, "bazel_test")
+            exit_code, stdout, stderr = await stream_process(proc, "bazel_test")
+            elapsed = time.time() - start_time
+            response = {
+                "success": exit_code == 0,
+                "command": "bazel test",
+                "targets": targets,
+                "exit_code": exit_code,
+                "stdout_lines": len(stdout),
+                "stderr_lines": len(stderr),
+                "elapsed_seconds": round(elapsed, 3)
+            }
             return [TextContent(
                 type="text",
-                text=f"Tests completed with exit code: {code}"
-            )]
+                text=json.dumps(response, indent=2)
+            )], cached
         
         elif name == "repo_setup":
             skip_install = arguments.get("skipInstall", False)
@@ -282,6 +366,7 @@ def build_server(repo_root: str) -> Server:
             if not skip_install:
                 scripts.append("./install/install_all.sh")
             
+            scripts_run = []
             for script in scripts:
                 script_path = os.path.join(repo_root, script)
                 if not os.path.exists(script_path):
@@ -295,14 +380,22 @@ def build_server(repo_root: str) -> Server:
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE,
                 )
-                await stream_process(proc, "repo_setup")
+                exit_code, stdout, stderr = await stream_process(proc, "repo_setup")
+                scripts_run.append({"script": script, "exit_code": exit_code})
             
             # Refresh cache after setup
             cached = None
+            elapsed = time.time() - start_time
+            response = {
+                "success": all(s["exit_code"] == 0 for s in scripts_run),
+                "command": "repo_setup",
+                "scripts_run": scripts_run,
+                "elapsed_seconds": round(elapsed, 3)
+            }
             return [TextContent(
                 type="text",
-                text="Setup completed successfully"
-            )]
+                text=json.dumps(response, indent=2)
+            )], cached
         
         else:
             raise ValueError(f"Unknown tool: {name}")

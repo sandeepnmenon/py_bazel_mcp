@@ -3,6 +3,12 @@ from __future__ import annotations
 import asyncio
 from typing import Sequence
 from .util import which_bazel
+from .validation import (
+    validate_query_expression,
+    validate_bazel_targets,
+    validate_bazel_flags,
+    validate_runtime_args,
+)
 
 
 async def run_query(expr: str, cwd: str, flags: Sequence[str] | None = None) -> list[str]:
@@ -19,11 +25,16 @@ async def run_query(expr: str, cwd: str, flags: Sequence[str] | None = None) -> 
         
     Raises:
         RuntimeError: If query fails
+        ValidationError: If inputs are invalid or potentially malicious
     """
+    # Validate inputs
+    expr = validate_query_expression(expr)
+    validated_flags = validate_bazel_flags(flags)
+    
     bazel = which_bazel()
     args = [bazel, "query", expr]
-    if flags:
-        args.extend(flags)
+    if validated_flags:
+        args.extend(validated_flags)
     
     proc = await asyncio.create_subprocess_exec(
         *args,
@@ -75,11 +86,18 @@ async def run_build(targets: Sequence[str], cwd: str, flags: Sequence[str] | Non
         
     Returns:
         Process handle for streaming
+        
+    Raises:
+        ValidationError: If inputs are invalid or potentially malicious
     """
+    # Validate inputs
+    validated_targets = validate_bazel_targets(targets)
+    validated_flags = validate_bazel_flags(flags)
+    
     bazel = which_bazel()
-    args = ["build", *targets]
-    if flags:
-        args.extend(flags)
+    args = ["build", *validated_targets]
+    if validated_flags:
+        args.extend(validated_flags)
     return await spawn_stream(bazel, args, cwd)
 
 
@@ -94,11 +112,18 @@ async def run_test(targets: Sequence[str], cwd: str, flags: Sequence[str] | None
         
     Returns:
         Process handle for streaming
+        
+    Raises:
+        ValidationError: If inputs are invalid or potentially malicious
     """
+    # Validate inputs
+    validated_targets = validate_bazel_targets(targets)
+    validated_flags = validate_bazel_flags(flags)
+    
     bazel = which_bazel()
-    args = ["test", *targets]
-    if flags:
-        args.extend(flags)
+    args = ["test", *validated_targets]
+    if validated_flags:
+        args.extend(validated_flags)
     return await spawn_stream(bazel, args, cwd)
 
 
@@ -114,11 +139,20 @@ async def run_binary(target: str, runtime_args: Sequence[str], cwd: str, flags: 
         
     Returns:
         Process handle for streaming
+        
+    Raises:
+        ValidationError: If inputs are invalid or potentially malicious
     """
+    # Validate inputs
+    from .validation import validate_bazel_target
+    validated_target = validate_bazel_target(target)
+    validated_flags = validate_bazel_flags(flags)
+    validated_runtime_args = validate_runtime_args(runtime_args)
+    
     bazel = which_bazel()
-    if flags:
+    if validated_flags:
         # Bazel flags must appear before --
-        args = ["run", target, *flags, "--", *runtime_args]
+        args = ["run", validated_target, *validated_flags, "--", *validated_runtime_args]
     else:
-        args = ["run", target, "--", *runtime_args]
+        args = ["run", validated_target, "--", *validated_runtime_args]
     return await spawn_stream(bazel, args, cwd)
