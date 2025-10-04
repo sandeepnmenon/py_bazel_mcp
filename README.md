@@ -280,7 +280,7 @@ py_bazel_mcp/
 
 ## Contributing
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+Contributions are welcome!
 
 ### How to Contribute
 
@@ -312,8 +312,8 @@ MIT License - see [LICENSE](LICENSE) file for details.
 - **Documentation**: [GitHub Wiki](https://github.com/sandeepnmenon/py_bazel_mcp/wiki)
 - **PyPI Package**: [bazel-mcp](https://pypi.org/project/bazel-mcp/)
 - **Issue Tracker**: [GitHub Issues](https://github.com/sandeepnmenon/py_bazel_mcp/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/sandeepnmenon/py_bazel_mcp/discussions)
+
 
 ---
 
-*Built with ❤️ for developers using Bazel and AI assistants*
+*Built for developers using Bazel and AI assistants*
