@@ -1,428 +1,318 @@
-# Bazel MCP Server
+# bazel-mcp
 
-A **Model Context Protocol (MCP)** server that exposes your Bazel-managed repository as MCP tools for AI agents in **VS Code** and **Cursor**. Turn your large C++/Python Bazel repo into an AI-friendly interface with minimal setup.
+[![Python Version](https://img.shields.io/pypi/pyversions/bazel-mcp)](https://pypi.org/project/bazel-mcp/)
+[![PyPI Version](https://img.shields.io/pypi/v/bazel-mcp)](https://pypi.org/project/bazel-mcp/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![MCP](https://img.shields.io/badge/MCP-Compatible-blue)](https://modelcontextprotocol.io/)
 
-## Features
+**Integrate Bazel with AI coding assistants via the Model Context Protocol**
 
-🎯 **Auto-discovery** — Point at your Bazel repo; targets are automatically discovered  
-🔧 **MCP Tools** — Build, run, test, and query via standardized MCP interface  
-📦 **Target kinds** — Supports `cc_library`, `cc_binary`, `cc_test`, `py_library`, `py_binary`, `py_test`  
-🚀 **Streaming logs** — Real-time build/test output streamed to your agent  
-⚙️ **Setup automation** — Optional `repo_setup` tool for custom init scripts  
-🐧 **Ubuntu-ready** — Turnkey installation on Ubuntu with Python 3.10+
+bazel-mcp is a [Model Context Protocol](https://modelcontextprotocol.io/) server that exposes your Bazel workspace to AI assistants like Claude (in VS Code or Cursor). It enables AI assistants to understand and work with Bazel projects by providing direct access to build, test, run, and query capabilities.
 
----
+## Why bazel-mcp?
 
-## Quick Start (Ubuntu)
+- **🤖 AI-Native Development**: Let AI assistants build, test, and run Bazel targets directly
+- **📦 Zero Configuration**: Automatically discovers all Bazel targets in your workspace
+- **🔄 Real-time Streaming**: See build and test output as it happens
+- **🎯 Smart Context**: AI understands your build graph and dependencies
+- **⚡ Fast Iteration**: No context switching between AI chat and terminal
 
-### 1. Install
+## Installation
 
-```bash
-# Clone the repository
-git clone <your-repo-url> bazel-mcp
-cd bazel-mcp
-
-# Run the setup script
-./setup.sh
-```
-
-This creates a virtual environment, installs dependencies, and sets up the `bazel-mcp` command.
-
-### 2. Verify Installation
+### From PyPI (Recommended)
 
 ```bash
-# Activate the virtual environment
-source .venv/bin/activate
-
-# Test the server
-bazel-mcp --help
+pip install bazel-mcp
 ```
 
-### 3. Configure in VS Code / Cursor
+### From Source
 
-#### Option A: VS Code with Warp
-
-If you're using [Warp](https://www.warp.dev/), add to Warp's MCP settings:
-
-1. Open Warp → Warp Drive → MCP Servers → `+ Add`
-2. Paste this JSON:
-
-```json
-{
-  "bazel-mcp": {
-    "command": "python3",
-    "args": ["-m", "bazel_mcp.server", "--repo", "/path/to/your/bazel/repo"],
-    "working_directory": "/home/you/github/py_bazel_mcp",
-    "env": {
-      "PYTHONPATH": "/home/you/github/py_bazel_mcp/src"
-    }
-  }
-}
+```bash
+git clone https://github.com/sandeepnmenon/py_bazel_mcp
+cd py_bazel_mcp
+pip install -e .
 ```
 
-**Important:** Replace `/path/to/your/bazel/repo` with your actual Bazel workspace path.
+## Quick Start
 
-#### Option B: VS Code (Claude or other MCP-enabled extensions)
+### 1. Configure Your Editor
 
-Create or update `.vscode/mcp.json` in your Bazel repository:
+#### VS Code (Claude Extension)
+
+Create `.vscode/mcp.json` in your workspace:
 
 ```json
 {
   "mcpServers": {
     "bazel-mcp": {
-      "command": "python3",
-      "args": ["-m", "bazel_mcp.server", "--repo", "${workspaceFolder}"],
-      "working_directory": "/home/you/github/py_bazel_mcp",
-      "env": {
-        "PYTHONPATH": "/home/you/github/py_bazel_mcp/src"
-      }
+      "command": "bazel-mcp",
+      "args": ["--repo", "${workspaceFolder}"]
     }
   }
 }
 ```
 
-#### Option C: Cursor
+#### Cursor
 
-In Cursor, add a **Custom MCP Server**:
+Add as a custom MCP server:
+1. Settings → MCP Servers → Add Custom Server
+2. Command: `bazel-mcp`
+3. Args: `--repo /path/to/your/bazel/workspace`
 
-1. Open Settings → MCP Servers → Add Custom Server
-2. **Command:** `python3`
-3. **Args:** `-m bazel_mcp.server --repo /path/to/your/bazel/repo`
-4. **Working Directory:** `/home/you/github/py_bazel_mcp`
-5. **Environment Variables:**
-   - `PYTHONPATH`: `/home/you/github/py_bazel_mcp/src`
+### 2. Verify Setup
 
----
+Ask your AI assistant:
+> "Can you list all Bazel targets in this workspace?"
 
-## MCP Tools
+The assistant should use the `bazel_list_targets` tool and show your project's targets.
 
-Once configured, your AI agent can use these tools:
+## Features
 
-### `bazel_list_targets`
+### 🛠️ Available Tools
 
-List all discovered targets grouped by kind.
+| Tool | Description |
+|------|-------------|
+| `bazel_list_targets` | List all discovered targets grouped by type |
+| `bazel_query` | Run arbitrary Bazel query expressions |
+| `bazel_build` | Build one or more targets with streaming output |
+| `bazel_run` | Run a binary target with arguments |
+| `bazel_test` | Run tests with optional filters |
+| `repo_setup` | Run project setup scripts |
+
+### 📚 Resources
+
+- **`bazel://targets`**: Returns a JSON snapshot of all discovered targets in your workspace
+
+## Usage Examples
+
+### Building and Testing
+
+> "Build the server binary"
+
+```python
+# AI will use:
+bazel_build(targets=["//apps:server"])
+```
+
+> "Run all tests matching 'Vector' in the math library"
+
+```python
+# AI will use:
+bazel_test(
+    targets=["//lib/math:all"],
+    flags=["--test_filter=Vector.*"]
+)
+```
+
+### Dependency Analysis
+
+> "What depends on the database library?"
+
+```python
+# AI will use:
+bazel_query(expr="rdeps(//..., //lib:database)")
+```
+
+> "Show me the build graph for the main app"
+
+```python
+# AI will use:
+bazel_query(expr="deps(//main:app)")
+```
+
+### Running Binaries
+
+> "Run the CLI tool with port 8080"
+
+```python
+# AI will use:
+bazel_run(
+    target="//tools:cli",
+    args=["--port=8080"]
+)
+```
+
+## API Documentation
+
+### Tool Reference
+
+<details>
+<summary><b>bazel_list_targets</b> - List all discovered targets</summary>
 
 **Parameters:**
-- `refresh` (boolean, optional): Force re-discovery of targets
+- `refresh` (bool, optional): Force re-discovery of targets
+
+**Returns:** JSON with targets grouped by kind (`cc_library`, `cc_binary`, `py_library`, `py_binary`, `cc_test`, `py_test`)
+</details>
+
+<details>
+<summary><b>bazel_query</b> - Run Bazel query expressions</summary>
+
+**Parameters:**
+- `expr` (str, required): Bazel query expression
+- `flags` (list, optional): Additional Bazel flags
 
 **Example:**
-```json
-{
-  "refresh": true
-}
+```python
+bazel_query(expr="deps(//main:app)")
+bazel_query(expr="kind('cc_test', //...)", flags=["--output=label_kind"])
 ```
+</details>
 
-**Returns:** JSON with `cc_library`, `cc_binary`, `py_library`, `py_binary`, `cc_test`, `py_test` arrays.
-
----
-
-### `bazel_query`
-
-Run arbitrary Bazel query expressions.
+<details>
+<summary><b>bazel_build</b> - Build targets</summary>
 
 **Parameters:**
-- `expr` (string, required): Bazel query expression
-- `flags` (array, optional): Additional Bazel flags
-
-**Examples:**
-```json
-{
-  "expr": "deps(//main:app)"
-}
-```
-
-```json
-{
-  "expr": "kind('cc_test', //...)",
-  "flags": ["--output=label_kind"]
-}
-```
-
----
-
-### `bazel_build`
-
-Build one or more targets.
-
-**Parameters:**
-- `targets` (array, required): Target labels to build
-- `flags` (array, optional): Bazel build flags
+- `targets` (list, required): Target labels to build
+- `flags` (list, optional): Bazel build flags
 
 **Example:**
-```json
-{
-  "targets": ["//src:my_library", "//apps:server"],
-  "flags": ["--config=debug", "--verbose_failures"]
-}
+```python
+bazel_build(targets=["//src:lib", "//apps:server"])
+bazel_build(targets=["//..."], flags=["--config=debug"])
 ```
+</details>
 
----
-
-### `bazel_run`
-
-Run a single binary target with arguments.
+<details>
+<summary><b>bazel_run</b> - Run a binary target</summary>
 
 **Parameters:**
-- `target` (string, required): Binary target label
-- `args` (array, optional): Runtime arguments passed to the binary
-- `flags` (array, optional): Bazel run flags (before `--`)
+- `target` (str, required): Binary target label
+- `args` (list, optional): Arguments for the binary
+- `flags` (list, optional): Bazel run flags
 
 **Example:**
-```json
-{
-  "target": "//tools:cli",
-  "args": ["--port=8080", "--verbose"],
-  "flags": ["--config=local"]
-}
+```python
+bazel_run(target="//tools:cli", args=["--port=8080"])
 ```
+</details>
 
----
-
-### `bazel_test`
-
-Run tests with optional filters.
+<details>
+<summary><b>bazel_test</b> - Run tests</summary>
 
 **Parameters:**
-- `targets` (array, optional): Test targets (default: `//...`)
-- `flags` (array, optional): Test flags (e.g., `--test_filter`)
+- `targets` (list, optional): Test targets (default: `//...`)
+- `flags` (list, optional): Test flags
 
-**Examples:**
-```json
-{
-  "targets": ["//tests:unit_tests"]
-}
+**Example:**
+```python
+bazel_test(targets=["//tests:unit_tests"])
+bazel_test(targets=["//..."], flags=["--test_filter=MyTest.*"])
 ```
+</details>
 
-```json
-{
-  "targets": ["//..."],
-  "flags": ["--test_filter=MyTestSuite.*", "--test_output=errors"]
-}
-```
+<details>
+<summary><b>repo_setup</b> - Run setup scripts</summary>
 
----
+**Parameters:**
+- `skipInstall` (bool, optional): Skip install scripts
 
-### `repo_setup`
-
-Run project setup scripts if present:
+**Runs (if present):**
 - `./tools/setup_cache.sh`
 - `./install/install_all.sh`
+</details>
 
-**Parameters:**
-- `skipInstall` (boolean, optional): Skip install scripts
+## Advanced Configuration
 
-**Example:**
-```json
-{
-  "skipInstall": false
-}
-```
+### Environment Variables
 
----
+| Variable | Description | Default |
+|----------|-------------|----------|
+| `BAZEL_PATH` | Path to Bazel executable | `bazel` |
+| `BAZELISK` | Use Bazelisk if available | auto-detect |
+| `PYTHONPATH` | Python module search path | Required for source installs |
 
-## MCP Resources
+### Using Bazelisk (Recommended)
 
-### `bazel://targets`
-
-Returns JSON snapshot of discovered targets.
-
-**Schema:**
-```json
-{
-  "timestamp": "2025-01-15T10:30:00Z",
-  "repoRoot": "/path/to/repo",
-  "kinds": {
-    "cc_library": ["//lib:math", "//lib:utils"],
-    "py_binary": ["//tools:cli"]
-  },
-  "all": ["//lib:math", "//lib:utils", "//tools:cli"]
-}
-```
-
----
-
-## Environment Variables
-
-- **`BAZEL_PATH`**: Override Bazel executable path (default: `bazel`)
-- **`BAZELISK`**: Use Bazelisk launcher (recommended)
-- **`PYTHONPATH`**: Must include `src` directory for module resolution
-
----
-
-## Manual Installation (without setup.sh)
+Bazelisk automatically manages Bazel versions:
 
 ```bash
-# Create virtual environment
-python3 -m venv .venv
-source .venv/bin/activate
+# Install Bazelisk
+wget -O bazelisk https://github.com/bazelbuild/bazelisk/releases/latest/download/bazelisk-linux-amd64
+chmod +x bazelisk
+sudo mv bazelisk /usr/local/bin/bazel
 
-# Upgrade pip
-pip install -U pip
-
-# Install package in editable mode
-pip install -e .
+# bazel-mcp will automatically detect and use it
 ```
-
----
-
-## Installing Bazelisk (Recommended)
-
-Bazelisk automatically downloads and manages Bazel versions:
-
-```bash
-# Download for Linux
-wget -O bazel https://github.com/bazelbuild/bazelisk/releases/latest/download/bazelisk-linux-amd64
-
-# Make executable and move to PATH
-chmod +x bazel
-sudo mv bazel /usr/local/bin/bazel
-
-# Verify
-bazel version
-```
-
----
-
-## Usage Examples (Agent Prompts)
-
-**Example 1: List all Python binaries**
-> "List all py_binary targets in the repo"
-
-Agent calls:
-```json
-{
-  "tool": "bazel_list_targets",
-  "arguments": {}
-}
-```
-
-**Example 2: Build a specific target**
-> "Build the server binary at //apps:server"
-
-Agent calls:
-```json
-{
-  "tool": "bazel_build",
-  "arguments": {
-    "targets": ["//apps:server"]
-  }
-}
-```
-
-**Example 3: Run tests matching a pattern**
-> "Run all tests in //lib/math that match Vector.*"
-
-Agent calls:
-```json
-{
-  "tool": "bazel_test",
-  "arguments": {
-    "targets": ["//lib/math:all"],
-    "flags": ["--test_filter=Vector.*"]
-  }
-}
-```
-
-**Example 4: Query dependencies**
-> "What are the dependencies of //main:app?"
-
-Agent calls:
-```json
-{
-  "tool": "bazel_query",
-  "arguments": {
-    "expr": "deps(//main:app)"
-  }
-}
-```
-
----
 
 ## Troubleshooting
 
-### "No module named 'mcp'"
+| Issue | Solution |
+|-------|----------|
+| "No module named 'mcp'" | Install with `pip install bazel-mcp` |
+| "bazel query failed" | Ensure you're in a Bazel workspace (has `WORKSPACE` or `MODULE.bazel`) |
+| Editor not detecting server | Restart editor after configuration |
+| Logs not streaming | Add `--verbose_failures` flag to see detailed output |
 
-Make sure you've activated the virtual environment and installed dependencies:
+## Development
+
+### Setting up for Development
+
 ```bash
+git clone https://github.com/sandeepnmenon/py_bazel_mcp
+cd py_bazel_mcp
+python -m venv .venv
 source .venv/bin/activate
 pip install -e .
 ```
 
-### "bazel query failed"
+### Running Tests
 
-- Ensure you're pointing to a valid Bazel workspace (contains `WORKSPACE` or `MODULE.bazel`)
-- Check that Bazel is installed: `bazel version`
-- Try setting `BAZEL_PATH` or `BAZELISK` environment variables
-
-### VS Code / Cursor not detecting MCP server
-
-- Verify `working_directory` and `PYTHONPATH` are set correctly in your MCP config
-- Check MCP server logs (see your editor's MCP documentation)
-- Restart your editor after adding the configuration
-
-### Logs not streaming
-
-The server uses `--color=no --curses=no` by default. If you need more verbose output, pass custom flags:
-```json
-{
-  "tool": "bazel_build",
-  "arguments": {
-    "targets": ["//..."],
-    "flags": ["--verbose_failures", "--announce_rc"]
-  }
-}
+```bash
+pytest tests/
 ```
 
----
-
-## Architecture
+### Project Structure
 
 ```
-bazel-mcp/
+py_bazel_mcp/
 ├── src/bazel_mcp/
+│   ├── __init__.py
 │   ├── server.py      # MCP server implementation
 │   ├── bazel.py       # Bazel command wrappers
 │   ├── targets.py     # Target discovery & caching
-│   └── util.py        # Helper functions
-├── pyproject.toml     # Package metadata
-└── setup.sh           # Installation script
+│   └── util.py        # Utility functions
+├── tests/             # Unit tests
+├── pyproject.toml     # Package configuration
+└── README.md          # Documentation
 ```
-
-**Key Design Decisions:**
-
-1. **Target caching** — Initial discovery is cached; use `refresh: true` to rescan
-2. **Streaming** — Build/run/test logs stream to stdout/stderr in real-time
-3. **Async** — All Bazel operations use `asyncio` for non-blocking execution
-4. **stdio transport** — Uses MCP stdio protocol for local editor integration
-
----
-
-## Future Enhancements
-
-- [ ] Watch mode with file system monitoring (auto-refresh targets)
-- [ ] `cquery` support for configuration-aware queries
-- [ ] Coverage and benchmark tools (`bazel coverage`, `bazel bench`)
-- [ ] Build graph visualization resource
-- [ ] Multi-repo support (external workspaces)
-- [ ] Remote execution support (RBE)
-
----
 
 ## Contributing
 
-Contributions welcome! Please open an issue or PR.
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
----
+### How to Contribute
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+### Reporting Issues
+
+Please report issues on our [GitHub Issues](https://github.com/sandeepnmenon/py_bazel_mcp/issues) page. Include:
+- Your environment (OS, Python version, Bazel version)
+- Steps to reproduce
+- Expected vs actual behavior
 
 ## License
 
-MIT License - see LICENSE file for details.
+MIT License - see [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+- [Model Context Protocol](https://modelcontextprotocol.io/) - The protocol that makes this possible
+- [Bazel](https://bazel.build/) - The build system we're integrating with
+- The MCP community for inspiration and examples
+
+## Links
+
+- **Documentation**: [GitHub Wiki](https://github.com/sandeepnmenon/py_bazel_mcp/wiki)
+- **PyPI Package**: [bazel-mcp](https://pypi.org/project/bazel-mcp/)
+- **Issue Tracker**: [GitHub Issues](https://github.com/sandeepnmenon/py_bazel_mcp/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/sandeepnmenon/py_bazel_mcp/discussions)
 
 ---
 
-## Related Resources
-
-- [Model Context Protocol](https://modelcontextprotocol.io/)
-- [Bazel Documentation](https://bazel.build/)
-- [Warp MCP Guide](https://www.warp.dev/university/mcp)
-- [VS Code MCP Extensions](https://marketplace.visualstudio.com/)
+*Built with ❤️ for developers using Bazel and AI assistants*
